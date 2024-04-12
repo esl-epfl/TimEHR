@@ -1,0 +1,14 @@
+
+name: p19
+static_variables: 
+timeseries_variables:
+path_raw: /mlodata1/hokarami/tedam/raw
+path_processed: /mlodata1/hokarami/tedam/TimEHR/data/processed/p19-real
+# path_train: /mlodata1/hokarami/tedam/GAN/p19-real/split{SPLIT}/p19gan_train.pkl
+# path_eval: /mlodata1/hokarami/tedam/GAN/p19-real/split{SPLIT}/p19gan_eval.pkl
+path_train: /mlodata1/hokarami/tedam/TimEHR/data/processed/p19-real/split{SPLIT}/train.pkl
+path_eval: /mlodata1/hokarami/tedam/TimEHR/data/processed/p19-real/split{SPLIT}/eval.pkl
+img_size: 64
+d_static: 4
+d_ts:
+label:

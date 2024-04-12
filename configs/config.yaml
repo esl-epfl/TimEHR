@@ -1,0 +1,79 @@
+defaults:
+  - data: p12
+
+split: 0
+bs: 64 # this is overall batch size. it will be overriden depending on the module
+WANDB_PROJECT_NAME: TimEHR
+device: cuda
+
+
+hydra:
+  run:
+    # dir: ./outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: ./outputs/${data.name}/split${split}
+  
+  # for multiple runs
+  # sweeper:
+  #   params:
+  #     split: 0,1,2,3,4
+
+cwgan:
+
+  epochs: 400
+  cri_iter: 1
+  lr: 0.0003
+  bs: 128
+  
+  img_size: ${data.img_size}
+  d_static: ${data.d_static}
+  
+  cond: true
+  channels: 2
+  z_dim: 100
+  kernel_size: 4
+  
+  feat_cri: 16
+  feat_gen: 16
+  
+  lambda_gp: 10
+  lambda_corr: 0
+  lambda_l1: 0
+
+
+  wandb_project_name: CWGAN  
+  device: ${device}
+
+
+pix2pix:
+
+  epochs: 150
+  disc_iter: 1
+  lr: 0.002
+  bs: 32
+
+  img_size: ${data.img_size}
+  d_static: ${data.d_static}
+  
+  cond: true
+  channels: 2
+  kernel_size: 4
+
+  feat_gen: 64
+  feat_disc: [8, 16]
+
+  
+  lambda_corr: 0
+  lambda_l1: 200
+  limit: 6
+  
+  wandb_project_name: PIXGAN
+  device: ${device}
+  
+generation:
+  ctgan: true
+  ratio: 1.0 # for tabular generation
+  iter_cv: 1
+  method: M3
+  privacy_emb: summary
+  adsgan: false
+  reuse: false

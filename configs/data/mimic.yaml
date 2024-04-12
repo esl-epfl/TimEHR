@@ -1,0 +1,14 @@
+
+name: mimic
+static_variables: 
+timeseries_variables:
+path_raw: /mlodata1/hokarami/tedam/raw/
+path_processed: /mlodata1/hokarami/tedam/TimEHR/data/processed/
+# path_train: /mlodata1/hokarami/tedam/GAN/mimic-real/split{SPLIT}/mimicgan_train.pkl
+# path_eval: /mlodata1/hokarami/tedam/GAN/mimic-real/split{SPLIT}/mimicgan_eval.pkl
+path_train: /mlodata1/hokarami/tedam/TimEHR/data/processed/mimic-real/split{SPLIT}/train.pkl
+path_eval: /mlodata1/hokarami/tedam/TimEHR/data/processed/mimic-real/split{SPLIT}/eval.pkl
+img_size: 64
+d_static: 4
+d_ts:
+label:
