@@ -15,7 +15,7 @@ from Utils.models import TimEHR
 from Utils.utils import mat2df
 
 
-@hydra.train(config_path="configs", config_name="config", version_base=None)
+@hydra.main(config_path="configs", config_name="config", version_base=None)
 def train(cfg: DictConfig):
 
     wandb_task_name = f'{cfg.data.name}-s{cfg.split}'
