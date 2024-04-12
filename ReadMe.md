@@ -96,7 +96,7 @@ For a more in-depth tutorial on how to train, generate, evaluate, and visualize 
 
 To replicate the results in the paper, please follow the steps below:
 
-1. Copy the configuration files from the `configs/replication/{dataset}/config.yaml` to `configs/config.yaml`. 
+1. Run the following commands: 
     ```bash
     python train.py -m data=p12 split=0,1,2,3,4
     python train.py -m data=mimic split=0,1,2,3,4
