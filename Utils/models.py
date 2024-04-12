@@ -8,7 +8,7 @@ import pandas as pd
 import yaml
 
 # from utils import mat2df, prepro, 
-from Utils.utils import gradient_penalty, ffill, save_examples
+from .utils import gradient_penalty, ffill, save_examples
 
 import logging
 
@@ -27,7 +27,7 @@ import wandb
 from omegaconf import OmegaConf
 
 from tqdm import tqdm
-from utils import find_last_epoch
+from .utils import find_last_epoch
 
 class CWGAN(nn.Module):
     def __init__(self, opt, d_static=1):
