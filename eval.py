@@ -64,15 +64,30 @@ if __name__ == "__main__":
     fake_static, fake_data = model.generate(
         train_dataset, count=counts, method=args.method
     )
-    df_ts_fake, df_demo_fake = mat2df(fake_data, fake_static, train_schema)
+    df_ts_fake, df_static_fake = mat2df(
+        fake_data,
+        fake_static,
+        train_dataset.dynamic_processor,
+        train_dataset.static_processor,
+    )
 
     # get train data
     train_static, train_data = model._get_data(train_dataset)
-    df_ts_train, df_demo_train = mat2df(train_data, train_static, train_schema)
+    df_ts_train, df_static_train = mat2df(
+        train_data,
+        train_static,
+        train_dataset.dynamic_processor,
+        train_dataset.static_processor,
+    )
 
     # get test data
-    test_static, test_data = model._get_data(val_dataset)
-    df_ts_test, df_demo_test = mat2df(test_data, test_static, val_schema)
+    val_static, val_data = model._get_data(val_dataset)
+    df_ts_test, df_static_test = mat2df(
+        val_data,
+        val_static,
+        val_dataset.dynamic_processor,
+        val_dataset.static_processor,
+    )
 
     # prepare inputs
     inputs = {
@@ -81,16 +96,16 @@ if __name__ == "__main__":
         "fake_data": fake_data,
         "train_static": train_static,
         "train_data": train_data,
-        "test_static": test_static,
-        "test_data": test_data,
+        "test_static": val_static,
+        "test_data": val_data,
         # dataframes from normalized data
         "df_ts_fake": df_ts_fake,
-        "df_demo_fake": df_demo_fake,
+        "df_static_fake": df_static_fake,
         "df_ts_train": df_ts_train,
-        "df_demo_train": df_demo_train,
+        "df_static_train": df_static_train,
         "df_ts_test": df_ts_test,
-        "df_demo_test": df_demo_test,
-        "state_vars": train_schema.dynamic_processor["mean"].index.tolist(),
+        "df_static_test": df_static_test,
+        "state_vars": train_dataset.temporal_features,
     }
 
     # we save the results in a wandb task
