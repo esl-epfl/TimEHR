@@ -119,19 +119,3 @@ If you find this repo useful, please cite our paper via
 ```
 
 
-
-
-```bash
-curl https://pyenv.run | bash
-
-
-export PATH="$HOME/.pyenv/bin:$PATH"
-eval "$(pyenv init --path)"
-eval "$(pyenv virtualenv-init -)"
-
-pyenv install 3.9.7
-pyenv global 3.9.7
-python --version
-
-
-```

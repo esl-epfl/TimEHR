@@ -22,6 +22,6 @@ Put the csv files in the `data/raw` folder or another folder. Then, add the `pat
 
 
 # Preparing Datasets
-* Once you have the csv files in the `data/raw` folder, follow [Prepare_Datasets.ipynb](Prepare_Datasets.ipynb) to prepare the datasets for training the model. The outputs will be saved in the `path_processed` specified in `configs/data/{DATASET_NAME}.yaml` file. You can download the processed P12 and P19 datasets from [here](https://drive.google.com/drive/folders/1QsK1tcH5NV5Xu2cEMOJvCy3IicSvRSme?usp=drive_link).
+* Now, check [Prepare_Datasets.ipynb](Prepare_Datasets.ipynb) to see how to prepare the raw datasets.
 
 

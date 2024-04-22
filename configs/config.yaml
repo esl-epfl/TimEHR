@@ -19,13 +19,13 @@ hydra:
 
 cwgan:
 
-  epochs: 400
+  epochs: 60
   cri_iter: 1
   lr: 0.0003
   bs: 128
   
   img_size: ${data.img_size}
-  d_static: ${data.d_static}
+  d_conditional: ${data.d_conditional}
   
   cond: true
   channels: 2
@@ -46,13 +46,13 @@ cwgan:
 
 pix2pix:
 
-  epochs: 150
+  epochs: 60
   disc_iter: 1
   lr: 0.002
   bs: 32
 
   img_size: ${data.img_size}
-  d_static: ${data.d_static}
+  d_conditional: ${data.d_conditional}
   
   cond: true
   channels: 2

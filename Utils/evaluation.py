@@ -128,15 +128,15 @@ def compute_synthcity(X_real, X_fake, X_test):
     scores = ScoreEvaluator()
     X = GenericDataLoader(
         X_real,
-        target_column="Label",
+        target_column="outcome",
     )
     X_test = GenericDataLoader(
         X_test,
-        target_column="Label",
+        target_column="outcome",
     )
     X_syn = GenericDataLoader(
         X_fake,
-        target_column="Label",
+        target_column="outcome",
     )
     X_ref_syn = X_syn
     X_augmented = None
@@ -454,9 +454,6 @@ def evaluate(inputs, wandb_task_name="DEBUG", config={}):
     MODEL_NAME = "TimEHR"
     DATASET = "p12"
 
-    load_dotenv()
-    wandb.login(key=os.getenv("WANDB_KEY"))
-
     if not os.path.exists(f"./Results/{wandb_task_name}/"):
         os.makedirs(f"./Results/{wandb_task_name}/")
     wandb.init(
@@ -468,9 +465,9 @@ def evaluate(inputs, wandb_task_name="DEBUG", config={}):
         dir=f"./Results/{wandb_task_name}/TimEHR-Eval",
     )
 
-    df_ts_fake, df_demo_fake = inputs["df_ts_fake"], inputs["df_demo_fake"]
-    df_ts_train, df_demo_train = inputs["df_ts_train"], inputs["df_demo_train"]
-    df_ts_test, df_demo_test = inputs["df_ts_test"], inputs["df_demo_test"]
+    df_ts_fake, df_static_fake = inputs["df_ts_fake"], inputs["df_static_fake"]
+    df_ts_train, df_static_train = inputs["df_ts_train"], inputs["df_static_train"]
+    df_ts_test, df_static_test = inputs["df_ts_test"], inputs["df_static_test"]
 
     X_train, y_train = xgboost_embeddings(df_ts_train, state_vars)
     X_fake, y_fake = xgboost_embeddings(df_ts_fake, state_vars)
@@ -481,9 +478,9 @@ def evaluate(inputs, wandb_task_name="DEBUG", config={}):
     X_test_by_fake, _ = xgboost_embeddings(df_ts_test, state_vars, df_base=df_ts_fake)
 
     # compataiblity with the previous version
-    df_train_fake, df_demo_fake = df_ts_fake, df_demo_fake
-    df_train_real, df_demo_real = df_ts_train, df_demo_train
-    df_test, df_demo = df_ts_test, df_demo_test
+    df_train_fake, df_static_fake = df_ts_fake, df_static_fake
+    df_train_real, df_static_real = df_ts_train, df_static_train
+    df_test, df_static = df_ts_test, df_static_test
 
     X_train_real, y_train_real = X_train, y_train
     X_train_fake, y_train_fake = X_fake, y_fake
@@ -491,9 +488,9 @@ def evaluate(inputs, wandb_task_name="DEBUG", config={}):
     X_test_real, y_test_real = X_test_by_train, y_test
     X_test_fake, y_test_fake = X_test_by_fake, y_test
 
-    # df_train_real = df_train_real.merge(df_demo_real[['RecordID','Label']],on=['RecordID'],how='inner')
-    # df_train_fake = df_train_fake.merge(df_demo_fake[['RecordID','Label']],on=['RecordID'],how='inner')
-    # df_test = df_test.merge(df_demo[['RecordID','Label']],on=['RecordID'],how='inner')
+    # df_train_real = df_train_real.merge(df_static_real[['RecordID','Label']],on=['RecordID'],how='inner')
+    # df_train_fake = df_train_fake.merge(df_static_fake[['RecordID','Label']],on=['RecordID'],how='inner')
+    # df_test = df_test.merge(df_static[['RecordID','Label']],on=['RecordID'],how='inner')
 
     # X_train_real, X_train_fake, X_test_real, X_test_fake,\
     # y_train_real, y_train_fake, y_test_real, y_test_fake = xgboost_embeddings(df_train_real, df_train_fake, df_test, state_vars)
@@ -587,9 +584,9 @@ def evaluate(inputs, wandb_task_name="DEBUG", config={}):
     metrics = compute_synthcity(X_real, X_fake, X_test)
     wandb.log(metrics)
 
-    REAL = X_real.drop(columns="Label").values
-    FAKE = X_fake.drop(columns="Label").values
-    TEST = X_test.drop(columns="Label").values
+    REAL = X_real.drop(columns="outcome").values
+    FAKE = X_fake.drop(columns="outcome").values
+    TEST = X_test.drop(columns="outcome").values
 
     # compute privacy NNAA
     metrics_sym, metrics_asym, metrics_asym_bl = compute_nnaa(REAL, FAKE, TEST)

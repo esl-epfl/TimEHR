@@ -1,0 +1,31 @@
+d_conditional: 2
+granularity: 1
+img_size: 64
+n_split: 1
+n_static: 1
+n_ts: 16
+name: sim
+path_processed: ./data/processed/sim-l0.2-d16
+path_raw: ./data/raw
+seed: 42
+static_types:
+- continuous
+static_vars:
+- Age
+ts_vars:
+- var_0
+- var_1
+- var_5
+- var_14
+- var_13
+- var_11
+- var_8
+- var_9
+- var_2
+- var_15
+- var_4
+- var_7
+- var_10
+- var_12
+- var_3
+- var_6

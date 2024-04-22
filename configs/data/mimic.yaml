@@ -1,14 +1,71 @@
-
-name: mimic
-static_variables: 
-timeseries_variables:
-path_raw: /mlodata1/hokarami/tedam/raw/
-path_processed: /mlodata1/hokarami/tedam/TimEHR/data/processed/
-# path_train: /mlodata1/hokarami/tedam/GAN/mimic-real/split{SPLIT}/mimicgan_train.pkl
-# path_eval: /mlodata1/hokarami/tedam/GAN/mimic-real/split{SPLIT}/mimicgan_eval.pkl
-path_train: /mlodata1/hokarami/tedam/TimEHR/data/processed/mimic-real/split{SPLIT}/train.pkl
-path_eval: /mlodata1/hokarami/tedam/TimEHR/data/processed/mimic-real/split{SPLIT}/eval.pkl
+d_conditional: 4
+d_ts: 35
+granularity: 1
 img_size: 64
-d_static: 4
-d_ts:
-label:
+label: null
+n_split: 5
+n_static: 3
+n_ts: 48
+name: mimic
+path_processed: /mlodata1/hokarami/tedam/TimEHR/data/processed/p12-real
+path_raw: /mlodata1/hokarami/tedam/raw
+seed: 42
+static_types:
+- continuous
+- continuous
+- continuous
+static_variables: null
+static_vars:
+- Age
+- Height
+- Weight
+timeseries_variables: null
+ts_vars:
+- bg_glucose
+- potassium
+- bg_lactate
+- pt
+- bg_potassium
+- hemoglobin
+- bg_pao2fio2ratio
+- bg_carboxyhemoglobin
+- resprate
+- bg_sodium
+- endotrachflag
+- meanbp
+- spo2
+- platelet
+- creatinine
+- bg_ph
+- bg_hematocrit
+- bun
+- bg_bicarbonate
+- bg_so2
+- bg_totalco2
+- albumin
+- bilirubin
+- wbc
+- heartrate
+- bicarbonate
+- bands
+- tempc
+- bg_pco2
+- chloride
+- sysbp
+- sodium
+- bg_chloride
+- diasbp
+- hematocrit
+- glucose
+- bg_temperature
+- ptt
+- bg_po2
+- bg_calcium
+- bg_hemoglobin
+- urineoutput
+- bg_methemoglobin
+- glucose_chart
+- inr
+- bg_baseexcess
+- aniongap
+- lactate

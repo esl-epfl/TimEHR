@@ -1,20 +1,27 @@
+# stdlib
+import os
+from typing import Any, Dict, List, Tuple
+
+# third party
+import numpy as np
+import pandas as pd
+
+# import plotly.express as px
+import plotly.graph_objects as go
 import torch
 import torch.nn as nn
 import torchvision
-
-import pandas as pd
-import numpy as np
-
 import wandb
-
-import plotly.express as px
-import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-import os
 
-
-def gradient_penalty(critic, real, fake, y=None, device="cpu"):
+def gradient_penalty(
+    critic: nn.Module,
+    real: torch.Tensor,
+    fake: torch.Tensor,
+    y: torch.Tensor = None,
+    device: str = "cpu",
+) -> torch.Tensor:
     BATCH_SIZE, C, H, W = real.shape
     alpha = torch.rand((BATCH_SIZE, 1, 1, 1)).repeat(1, C, H, W).to(device)
     interpolated_images = real * alpha + fake * (1 - alpha)  # bs,2,64,64
@@ -36,40 +43,12 @@ def gradient_penalty(critic, real, fake, y=None, device="cpu"):
     return gradient_penalty
 
 
-def gradient_penalty2(critic, x, real, fake, sta=None, device="cpu"):
-    BATCH_SIZE, C, H, W = real.shape
-    alpha = torch.rand((BATCH_SIZE, 1, 1, 1)).repeat(1, C, H, W).to(device)
-    interpolated_images = real * alpha + fake * (1 - alpha)
-
-    # Calculate critic scores
-    mixed_scores = critic(x, interpolated_images, sta=sta)
-
-    # Take the gradient of the scores with respect to the images
-    gradient = torch.autograd.grad(
-        inputs=interpolated_images,
-        outputs=mixed_scores,
-        grad_outputs=torch.ones_like(mixed_scores),
-        create_graph=True,
-        retain_graph=True,
-    )[0]
-    gradient = gradient.view(gradient.shape[0], -1)
-    gradient_norm = gradient.norm(2, dim=1)
-    gradient_penalty = torch.mean((gradient_norm - 1) ** 2)
-    return gradient_penalty
-
-
-def save_checkpoint(state, filename="celeba_wgan_gp.pth.tar"):
-    print("=> Saving checkpoint")
-    torch.save(state, filename)
-
-
-def load_checkpoint(checkpoint, gen, disc):
-    print("=> Loading checkpoint")
-    gen.load_state_dict(checkpoint["gen"])
-    disc.load_state_dict(checkpoint["disc"])
-
-
-def compute_corr_mat(all_values, all_masks, NVARS=40, method="none"):
+def compute_corr_mat(
+    all_values: torch.Tensor,
+    all_masks: torch.Tensor,
+    NVARS: int = 40,
+    method: str = "none",
+) -> np.ndarray:
     # all_values.shape = (*, n_vars) in [-1,1]
     # all_masks.shape = (*, n_vars) -1: missing, 1: not missing
     # method = 'none' or 'ffill'
@@ -94,14 +73,14 @@ def compute_corr_mat(all_values, all_masks, NVARS=40, method="none"):
     return corr_mat
 
 
-def mat2img(mat):
+def mat2img(mat: torch.Tensor) -> np.ndarray:
     X = mat.cpu().detach().numpy()
 
-    def grayscale_to_blue_red(x):
-        if x < 0.5:
-            return (int(255 * (1 - x)), int(255 * x), int(255 * x))
-        else:
-            return (int(255 * (1 - x)), int(255 * (1 - x)), int(255 * x))
+    # def grayscale_to_blue_red(x):
+    #     if x < 0.5:
+    #         return (int(255 * (1 - x)), int(255 * x), int(255 * x))
+    #     else:
+    #         return (int(255 * (1 - x)), int(255 * (1 - x)), int(255 * x))
 
     red_values = (255 * (1 - X[0])).astype(int)  # shape (H, W)
     blue_values = (255 * X[0]).astype(int)  # shape (H, W)
@@ -120,7 +99,9 @@ def mat2img(mat):
     return colored_image
 
 
-def save_examples(real, fake, n_ts=40, epoch_no=-1):
+def save_examples(
+    real: torch.Tensor, fake: torch.Tensor, n_ts: int = 40, epoch_no: int = -1
+) -> None:
     # everythinig is between -1 and 1
 
     NVARS = n_ts  # number of time series variables
@@ -153,7 +134,7 @@ def save_examples(real, fake, n_ts=40, epoch_no=-1):
         fake_image = mat2img(upscaled_img_grid_fake)  # [3, 4H, 4W]
 
         # for the fake_image, set the white pixels to #fadf93
-        def set_white_to_gray(image_tensor):
+        def set_white_to_gray(image_tensor: np.ndarray) -> np.ndarray:
             # Check where all three channels are 255 (white)
             white_mask = np.all(image_tensor == 255, axis=0)
 
@@ -169,12 +150,13 @@ def save_examples(real, fake, n_ts=40, epoch_no=-1):
 
         # add a watermark to fake image with gray
         def add_watermark(
-            image_tensor,
-            text="Watermark",
-            position="center",
-            font_size=40,
-            font_color=(128, 128, 128),
-        ):
+            image_tensor: np.ndarray,
+            text: str = "Watermark",
+            position: Any = "center",
+            font_size: int = 40,
+            font_color: Tuple = (128, 128, 128),
+        ) -> np.ndarray:
+            # third party
             from PIL import Image, ImageDraw, ImageFont
 
             # Convert the tensor to a PIL image
@@ -255,6 +237,7 @@ def save_examples(real, fake, n_ts=40, epoch_no=-1):
     )
 
     # # map to RGB
+    # third party
     from PIL import Image
 
     # Convert the NumPy array to a PIL Image
@@ -262,7 +245,7 @@ def save_examples(real, fake, n_ts=40, epoch_no=-1):
 
     # pil_image.save("output_image.png")
 
-    try:
+    if wandb.run is not None:
         if epoch_no == -1:  # during evaluation
             wandb.log(
                 {
@@ -281,13 +264,13 @@ def save_examples(real, fake, n_ts=40, epoch_no=-1):
                 step=epoch_no,
                 commit=False,
             )
-    except:
-        print("No wandb connection")
 
     return pil_image
 
 
-def save_examples_dopp(real, fake, NVARS=35, epoch=0):
+def save_examples_dopp(
+    real: torch.Tensor, fake: torch.Tensor, NVARS: int = 35, epoch: int = 0
+) -> None:
     # everythinig is between -1 and 1
     # NVARS = opt.NVARS
     L_CUT = NVARS + 1
@@ -373,6 +356,7 @@ def save_examples_dopp(real, fake, NVARS=35, epoch=0):
     )
 
     # # map to RGB
+    # third party
     from PIL import Image
 
     # Convert the NumPy array to a PIL Image
@@ -389,15 +373,16 @@ def save_examples_dopp(real, fake, NVARS=35, epoch=0):
     return
 
 
-def save_examples2(real, fake, NVARS=40):
+def save_examples2(real: torch.Tensor, fake: torch.Tensor, NVARS: int = 40) -> None:
     # everythinig is between -1 and 1
     L_CUT = NVARS + 1
 
     with torch.no_grad():
 
         # # map to RGB
-        from PIL import Image
+        # third party
         import numpy as np
+        from PIL import Image
 
         img_grid_real = torchvision.utils.make_grid(
             real[:9, :, :, :L_CUT], normalize=True, nrow=3
@@ -422,11 +407,11 @@ def save_examples2(real, fake, NVARS=40):
         )  # shape (n_channels, 4H, 8W)
         X = full_image.cpu().detach().numpy()
 
-        def grayscale_to_blue_red(x):
-            if x < 0.5:
-                return (int(255 * (1 - x)), int(255 * x), int(255 * x))
-            else:
-                return (int(255 * (1 - x)), int(255 * (1 - x)), int(255 * x))
+        # def grayscale_to_blue_red(x):
+        #     if x < 0.5:
+        #         return (int(255 * (1 - x)), int(255 * x), int(255 * x))
+        #     else:
+        #         return (int(255 * (1 - x)), int(255 * (1 - x)), int(255 * x))
 
         red_values = (255 * (1 - X[0])).astype(int)  # shape (H, W)
         blue_values = (255 * X[0]).astype(int)  # shape (H, W)
@@ -452,108 +437,111 @@ def save_examples2(real, fake, NVARS=40):
     return
 
 
-def mia_metrics_fn(disc, train_loader, val_loader):
-    from sklearn.metrics import (
-        roc_auc_score,
-        f1_score,
-        average_precision_score,
-        accuracy_score,
-    )
+# def mia_metrics_fn(disc, train_loader, val_loader):
+#     # third party
+#     from sklearn.metrics import (
+#         accuracy_score,
+#         average_precision_score,
+#         f1_score,
+#         roc_auc_score,
+#     )
 
-    device = "cuda"
+#     device = "cuda"
 
-    metrics = dict()
+#     metrics = dict()
 
-    bce = torch.nn.BCEWithLogitsLoss(reduction="none")
+#     bce = torch.nn.BCEWithLogitsLoss(reduction="none")
 
-    disc_score_train = []
-    disc_score_val = []
-    disc_score_gen = []
+#     disc_score_train = []
+#     disc_score_val = []
+#     disc_score_gen = []
 
-    # scores for train data
-    with torch.no_grad():
-        for idx, batch in enumerate(train_loader):
-            x = batch[0].to(device)  # (batch_size, 3, 256, 256)
-            y = batch[1].to(device)  # (batch_size, 3, 256, 256)
-            sta = batch[2].to(device)
+#     # scores for train data
+#     with torch.no_grad():
+#         for idx, batch in enumerate(train_loader):
+#             x = batch[0].to(device)  # (batch_size, 3, 256, 256)
+#             y = batch[1].to(device)  # (batch_size, 3, 256, 256)
+#             sta = batch[2].to(device)
 
-            # cur_batch_size = x.shape[0]
+#             # cur_batch_size = x.shape[0]
 
-            D_real = disc(x, y, sta=sta)
-            D_real_loss_train = torch.mean(
-                bce(D_real, torch.ones_like(D_real)), dim=(1, 2, 3)
-            )
-            # y.shape, D_real.shape, D_real_loss_train.shape
-            disc_score_train.append(D_real_loss_train.cpu().numpy())
+#             D_real = disc(x, y, sta=sta)
+#             D_real_loss_train = torch.mean(
+#                 bce(D_real, torch.ones_like(D_real)), dim=(1, 2, 3)
+#             )
+#             # y.shape, D_real.shape, D_real_loss_train.shape
+#             disc_score_train.append(D_real_loss_train.cpu().numpy())
 
-    # scores for val data
-    with torch.no_grad():
-        for idx, batch in enumerate(val_loader):
-            x = batch[0].to(device)  # (batch_size, 3, 256, 256)
-            y = batch[1].to(device)  # (batch_size, 3, 256, 256)
-            sta = batch[2].to(device)
+#     # scores for val data
+#     with torch.no_grad():
+#         for idx, batch in enumerate(val_loader):
+#             x = batch[0].to(device)  # (batch_size, 3, 256, 256)
+#             y = batch[1].to(device)  # (batch_size, 3, 256, 256)
+#             sta = batch[2].to(device)
 
-            # cur_batch_size = x.shape[0]
+#             # cur_batch_size = x.shape[0]
 
-            D_real = disc(x, y, sta=sta)
-            D_real_loss_val = torch.mean(
-                bce(D_real, torch.ones_like(D_real)), dim=(1, 2, 3)
-            )
-            # y.shape, D_real.shape, D_real_loss_train.shape
-            disc_score_val.append(D_real_loss_val.cpu().numpy())
+#             D_real = disc(x, y, sta=sta)
+#             D_real_loss_val = torch.mean(
+#                 bce(D_real, torch.ones_like(D_real)), dim=(1, 2, 3)
+#             )
+#             # y.shape, D_real.shape, D_real_loss_train.shape
+#             disc_score_val.append(D_real_loss_val.cpu().numpy())
 
-    disc_score_train = np.concatenate(disc_score_train)
-    disc_score_val = np.concatenate(disc_score_val)
-    disc_score_gen = np.concatenate(disc_score_gen)
+#     disc_score_train = np.concatenate(disc_score_train)
+#     disc_score_val = np.concatenate(disc_score_val)
+#     disc_score_gen = np.concatenate(disc_score_gen)
 
-    y_score = np.concatenate(
-        [
-            disc_score_train,
-            disc_score_gen,
-            disc_score_val,
-        ]
-    )
-    y_true = np.concatenate(
-        [
-            np.ones_like(disc_score_train),
-            np.zeros_like(disc_score_gen),
-            np.zeros_like(disc_score_val),
-        ]
-    )
+#     y_score = np.concatenate(
+#         [
+#             disc_score_train,
+#             disc_score_gen,
+#             disc_score_val,
+#         ]
+#     )
+#     y_true = np.concatenate(
+#         [
+#             np.ones_like(disc_score_train),
+#             np.zeros_like(disc_score_gen),
+#             np.zeros_like(disc_score_val),
+#         ]
+#     )
 
-    y_score.shape, y_true.shape
+#     y_score.shape, y_true.shape
 
-    y_score.min(), y_score.max()
+#     y_score.min(), y_score.max()
 
-    # # min-max normalize the scores
-    y_score = (y_score - y_score.min()) / (y_score.max() - y_score.min())
-    y_score.min(), y_score.max()
-    th = np.quantile(y_score, 1 - (disc_score_train.shape[0]) / y_score.shape[0])
+#     # # min-max normalize the scores
+#     y_score = (y_score - y_score.min()) / (y_score.max() - y_score.min())
+#     y_score.min(), y_score.max()
+#     # th = np.quantile(y_score, 1 - (disc_score_train.shape[0]) / y_score.shape[0])
 
-    # accuracy_score(y_true, y_score>0.5)
-    # roc_auc_score(y_true, y_score)
-    # f1_score(y_true, y_score>0.5)
-    # average_precision_score(y_true, y_score)
+#     # accuracy_score(y_true, y_score>0.5)
+#     # roc_auc_score(y_true, y_score)
+#     # f1_score(y_true, y_score>0.5)
+#     # average_precision_score(y_true, y_score)
 
-    # put metrics in dict
-    metrics["MIA/accuracy"] = accuracy_score(y_true, y_score > 0.5)
-    metrics["MIA/roc_auc"] = roc_auc_score(y_true, y_score)
-    metrics["MIA/f1"] = f1_score(y_true, y_score > 0.5)
-    metrics["MIA/average_precision"] = average_precision_score(y_true, y_score)
+#     # put metrics in dict
+#     metrics["MIA/accuracy"] = accuracy_score(y_true, y_score > 0.5)
+#     metrics["MIA/roc_auc"] = roc_auc_score(y_true, y_score)
+#     metrics["MIA/f1"] = f1_score(y_true, y_score > 0.5)
+#     metrics["MIA/average_precision"] = average_precision_score(y_true, y_score)
 
-    # compute the baselines for accuracy, f1, average_precision
-    bl_accuracy = np.mean(y_true)
-    bl_f1 = 2 * bl_accuracy / (bl_accuracy + 1)
-    bl_average_precision = bl_accuracy
+#     # compute the baselines for accuracy, f1, average_precision
+#     bl_accuracy = np.mean(y_true)
+#     bl_f1 = 2 * bl_accuracy / (bl_accuracy + 1)
+#     bl_average_precision = bl_accuracy
 
-    metrics["MIA/accuracy_baseline"] = bl_accuracy
-    metrics["MIA/f1_baseline"] = bl_f1
-    metrics["MIA/average_precision_baseline"] = bl_average_precision
+#     metrics["MIA/accuracy_baseline"] = bl_accuracy
+#     metrics["MIA/f1_baseline"] = bl_f1
+#     metrics["MIA/average_precision_baseline"] = bl_average_precision
 
-    return metrics
+#     return metrics
 
 
-def prepro(df, df_mean, df_std, state_vars):
+def prepro(
+    df: pd.DataFrame, df_mean: pd.DataFrame, df_std: pd.DataFrame, state_vars: List
+) -> pd.DataFrame:
 
     df = df.copy()
     # # missingness rate old
@@ -561,14 +549,14 @@ def prepro(df, df_mean, df_std, state_vars):
 
     # missingness rate (normalized by max time)
     df_missing = (
-        df[["RecordID"] + ["Time"] + state_vars]
-        .groupby("RecordID")
-        .apply(lambda x: x[state_vars].isnull().sum() / max(x.Time))[state_vars]
+        df[["id"] + ["timepoint"] + state_vars]
+        .groupby("id")
+        .apply(lambda x: x[state_vars].isnull().sum() / max(x.timepoint))[state_vars]
         .reset_index()
     )
 
     # change column names to "mr+{var}"
-    df_missing.columns = ["RecordID"] + ["mr_" + var for var in state_vars]
+    df_missing.columns = ["id"] + ["mr_" + var for var in state_vars]
 
     # mean imputation for missing values
     df[state_vars] = df[state_vars].fillna(df[state_vars].mean())
@@ -578,145 +566,160 @@ def prepro(df, df_mean, df_std, state_vars):
 
     # group by id and compute statistics (min.max,mean,std) for each variable
 
-    df2 = (
-        df.groupby("RecordID")[state_vars]
-        .agg(["min", "max", "mean", "std"])
-        .reset_index()
-    )
+    df2 = df.groupby("id")[state_vars].agg(["min", "max", "mean", "std"]).reset_index()
 
     # combine the names first and second level column indices
 
     df2.columns = ["_".join(col).strip() for col in df2.columns.values]
 
-    df2.rename(columns={"RecordID_": "RecordID"}, inplace=True)
+    df2.rename(columns={"id_": "id"}, inplace=True)
 
-    df2 = df2.merge(
-        df[["RecordID", "Label"]].drop_duplicates(), on=["RecordID"], how="inner"
-    )
+    df2 = df2.merge(df[["id", "outcome"]].drop_duplicates(), on=["id"], how="inner")
 
-    df2 = df2.merge(df_missing, on=["RecordID"], how="inner")
+    df2 = df2.merge(df_missing, on=["id"], how="inner")
 
     return df2
 
 
-def mat2df(all_dyn, all_sta, dataset_schema):
+def mat2df(
+    all_dyn: np.ndarray,
+    all_sta: np.ndarray,
+    dynamic_processor: Any,
+    static_processor: Any,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
     all_dyn = all_dyn * 0.5 + 0.5
 
     # print(dataset_schema.num_samples)
     MIDPOINT = 0.5
-    # df_filt
-    state_vars = dataset_schema.dynamic_processor["mean"].index.tolist()
+    # df_ts
+    state_vars = dynamic_processor["features"]
     N_VARS = len(state_vars)
     N_VARS
 
     mat = all_dyn[:, 0, :, :N_VARS].reshape(-1, N_VARS)
     mask = all_dyn[:, 1, :, :N_VARS].reshape(-1, N_VARS) >= MIDPOINT
 
-    df_filt = pd.DataFrame(mat, columns=state_vars)
+    df_ts = pd.DataFrame(mat, columns=state_vars)
 
-    df_filt[state_vars] = (
-        df_filt[state_vars]
-        * (
-            dataset_schema.dynamic_processor["max"]
-            - dataset_schema.dynamic_processor["min"]
-        )
-        + dataset_schema.dynamic_processor["min"]
+    df_ts[state_vars] = (
+        df_ts[state_vars] * (dynamic_processor["max"] - dynamic_processor["min"])
+        + dynamic_processor["min"]
     )
 
-    df_filt[state_vars] = (
-        df_filt[state_vars] * dataset_schema.dynamic_processor["std"]
-        + dataset_schema.dynamic_processor["mean"]
+    df_ts[state_vars] = (
+        df_ts[state_vars] * dynamic_processor["std"] + dynamic_processor["mean"]
     )
 
     # setting nan values
 
-    df_filt[~mask] = np.nan
-    df_filt.isnull().sum().sum(), df_filt.shape
-    df_filt.isnull().sum() / df_filt.shape[0] * 100
+    df_ts[~mask] = np.nan
+    df_ts.isnull().sum().sum(), df_ts.shape
+    df_ts.isnull().sum() / df_ts.shape[0] * 100
 
     # adding time
     time_array = np.arange(all_dyn.shape[2])
-    # print(df_filt.shape, all_dyn.shape)
+    # print(df_ts.shape, all_dyn.shape)
     col_time = np.tile(time_array, all_dyn.shape[0])
 
-    ## adding hospital
-    # df_filt['Hospital'] = 0
+    # adding hospital
+    # df_ts['Hospital'] = 0
 
     # adding RecordID
     col_recordid = np.repeat(np.arange(all_dyn.shape[0]), len(time_array))
 
-    df_filt = pd.concat(
-        [df_filt, pd.DataFrame({"Time": col_time, "RecordID": col_recordid})], axis=1
+    df_ts = pd.concat(
+        [df_ts, pd.DataFrame({"timepoint": col_time, "id": col_recordid})], axis=1
     )
     # drop nan rows
 
     # OLD
-    q_nan_rows_old = df_filt[state_vars].isnull().sum(axis=1) == N_VARS
+    q_nan_rows_old = df_ts[state_vars].isnull().sum(axis=1) == N_VARS
     # # NEW
-    # df_filt['INDIC'] = dataset_schema.max_len.flatten()
-    # q_nan_rows = df_filt['INDIC']==0
-    # df_filt.drop('INDIC', axis=1, inplace=True)
+    # df_ts['INDIC'] = max_len.flatten()
+    # q_nan_rows = df_ts['INDIC']==0
+    # df_ts.drop('INDIC', axis=1, inplace=True)
 
     # print(f"dropping {q_nan_rows.sum()} rows")
     # print(f"old nans {q_nan_rows_old.sum()} rows")
-    df_filt = df_filt[~q_nan_rows_old]
-    df_filt.head()
-    df_filt.shape
+    df_ts = df_ts[~q_nan_rows_old]
+    df_ts.head()
+    df_ts.shape
 
-    df_filt = df_filt.dropna(subset=state_vars, how="all")
+    df_ts = df_ts.dropna(subset=state_vars, how="all")
 
-    # df_demo
+    # df_static
 
-    demo_vars_new = dataset_schema.static_processor["demo_vars_enc"]
+    features_encoded = static_processor["features_encoded"]
+    static_types = static_processor["static_types"]
+    static_features = static_processor["static_features"]
 
-    if len(demo_vars_new) == all_sta.shape[1]:
+    df_static = pd.DataFrame()
+    for i, (var, var_type) in enumerate(zip(static_features, static_types)):
+        if var_type == "continuous":
+            df_static[var] = all_sta[:, i]
 
-        df_demo = pd.DataFrame(all_sta, columns=demo_vars_new)
-    else:
-        df_demo = pd.DataFrame(all_sta)
-    for col in demo_vars_new:
-        if col in dataset_schema.static_processor.keys():
             # de-standardize
-            df_demo[col] = (
-                df_demo[col] * dataset_schema.static_processor[col]["std"]
-                + dataset_schema.static_processor[col]["mean"]
+            df_static[var] = (
+                df_static[var] * static_processor[var]["std"]
+                + static_processor[var]["mean"]
             )
-            # print(col)
-    df_demo.columns
-    if "ICUType0" in df_demo.columns:
-        df_demo["ICUType"] = (
-            np.argmax(
-                df_demo[["ICUType0", "ICUType1", "ICUType2", "ICUType3"]].values, axis=1
-            )
-            + 1
-        )
-        df_demo.drop(
-            ["ICUType0", "ICUType1", "ICUType2", "ICUType3"], axis=1, inplace=True
-        )
+
+        elif var_type == "binary":
+            df_static[var] = (all_sta[:, i] > 0.5).astype(int)
+        elif var_type == "categorical":
+            i_categories = ["ICU" in x for x in features_encoded]
+            df_static[var] = np.argmax(all_sta[:, i_categories], axis=1) + 1
+
+    # add outcome
+    df_static["outcome"] = all_sta[:, -1]
+
+    # if len(features_encoded) == all_sta.shape[1]:
+
+    #     df_demo = pd.DataFrame(all_sta, columns=features_encoded)
+    # else:
+    #     df_demo = pd.DataFrame(all_sta)
+    # for col in features_encoded:
+    #     if col in static_processor.keys():
+    #         # de-standardize
+    #         df_demo[col] = (
+    #             df_demo[col] * static_processor[col]["std"]
+    #             + static_processor[col]["mean"]
+    #         )
+    #         # print(col)
+    # df_demo.columns
+    # if "ICUType0" in df_demo.columns:
+    #     df_demo["ICUType"] = (
+    #         np.argmax(
+    #             df_demo[["ICUType0", "ICUType1", "ICUType2", "ICUType3"]].values, axis=1
+    #         )
+    #         + 1
+    #     )
+    #     df_demo.drop(
+    #         ["ICUType0", "ICUType1", "ICUType2", "ICUType3"], axis=1, inplace=True
+    #     )
 
     # add RecordID
-    df_demo["RecordID"] = np.arange(len(df_demo))
-    df_demo.head()
+    df_static["id"] = np.arange(len(df_static))
+    df_static.head()
 
     # make label column integer
-    if "Label" in df_demo.columns:
-        df_demo["Label"] = df_demo["Label"].astype(int)
+    if "outcome" in df_static.columns:
+        df_static["outcome"] = df_static["outcome"].astype(int)
 
-    df_filt = df_filt.merge(
-        df_demo[["RecordID", "Label"]], on=["RecordID"], how="inner"
-    )
+    df_ts = df_ts.merge(df_static[["id", "outcome"]], on=["id"], how="inner")
 
-    return df_filt, df_demo
+    return df_ts, df_static
 
 
-def find_last_epoch(path):
+def find_last_epoch(path: str) -> int:
 
     all_files = os.listdir(path)
 
     # extract the last epoch
     last_epoch = max(
-        [int(file.split("_")[1].split(".")[0]) for file in all_files if "gen" in file]
+        # [int(file.split(".")[-2].split(".")[-1]) for file in all_files if "gen" in file]
+        [int(file.split("_")[-1].split(".")[0]) for file in all_files if "gen" in file]
     )
 
     last_epoch
@@ -724,7 +727,8 @@ def find_last_epoch(path):
     return last_epoch
 
 
-def create_df_demo(df, demo_vars):
+def create_df_demo(df: pd.DataFrame, demo_vars: List[str]) -> Tuple:
+    # third party
     from sklearn.preprocessing import OneHotEncoder
 
     demo_vars
@@ -797,7 +801,7 @@ def create_df_demo(df, demo_vars):
 #     return a
 
 
-def ffill(a, mask, limit=6):
+def ffill(a: torch.Tensor, mask: torch.Tensor, limit: int = 6) -> torch.Tensor:
     mask = (mask > 0).float()
     first = a[:, 0, :]
     for i in range(limit):
@@ -808,8 +812,13 @@ def ffill(a, mask, limit=6):
 
 
 def handle_cgan(
-    df_demo, df_filt, state_vars, demo_vars_new, granularity=1, target_dim=64
-):
+    df_demo: pd.DataFrame,
+    df_filt: pd.DataFrame,
+    state_vars: List,
+    demo_vars_new: List,
+    granularity: int = 1,
+    target_dim: int = 64,
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     var_old = [
         "Albumin",
         "ALP",
@@ -880,7 +889,7 @@ def handle_cgan(
     all_masks = []
 
     for SAMPLE in dyn:
-        time = SAMPLE.time.values
+        # time = SAMPLE.time.values
         # times_padded = pd.DataFrame({'time':np.arange(0,   int(max(time)),granularity)})
 
         # print(time,len(time),max(time))
@@ -912,7 +921,7 @@ def handle_cgan(
 
     # PADDING
     # target_dim = TARGET_DIM
-    padding_needed = target_dim - all_masks.shape[-1]
+    padding_needed = target_dim - len(state_vars)
 
     all_masks_padded = (
         torch.nn.functional.pad(all_masks, (0, padding_needed)).unsqueeze(1).float()
@@ -920,7 +929,7 @@ def handle_cgan(
     all_dyn_padded = (
         torch.nn.functional.pad(all_dyn, (0, padding_needed)).unsqueeze(1).float()
     )  # add channel dim
-    all_times_padded = torch.nn.functional.pad(all_times, (0, padding_needed))
+    # all_times_padded = torch.nn.functional.pad(all_times, (0, padding_needed))
     all_masks_padded.shape
     all_dyn_padded.shape
 
@@ -937,7 +946,13 @@ def handle_cgan(
     return all_masks_padded.float(), all_dyn_padded.float(), all_sta.float()
 
 
-def custom_process(df_demo, df_filt, train_ids, state_vars, gan_demovars):
+def custom_process(
+    df_demo: pd.DataFrame,
+    df_filt: pd.DataFrame,
+    train_ids: Any,
+    state_vars: List,
+    gan_demovars: List,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, Dict, Dict]:
 
     df_demo_train = df_demo[df_demo["RecordID"].isin(train_ids)].copy()
     df_filt_train = df_filt[df_filt["RecordID"].isin(train_ids)].copy()
@@ -1006,7 +1021,7 @@ def custom_process(df_demo, df_filt, train_ids, state_vars, gan_demovars):
     )
 
 
-def dl_runs(all_runs, selected_tag=None):
+def dl_runs(all_runs: List, selected_tag: Any = None) -> pd.DataFrame:
 
     if selected_tag is None:
         selected_tag = []
@@ -1058,11 +1073,13 @@ def dl_runs(all_runs, selected_tag=None):
     return runs_df
 
 
-def fun_cohensd(df_pred, df_true, state_vars):
+def fun_cohensd(
+    df_pred: pd.DataFrame, df_true: pd.DataFrame, state_vars: List
+) -> pd.Series:
     df_stat = pd.Series(index=state_vars, dtype=str)
 
     # categorize cohens d into small, medium, large
-    def cohens_d_cat(x):
+    def cohens_d_cat(x: float) -> str:
         if x < 0.2:
             return "small"
         elif x < 0.5:
@@ -1089,10 +1106,14 @@ def fun_cohensd(df_pred, df_true, state_vars):
 
 
 def plot_corr(
-    df_train_real, df_train_fake, df_test, state_vars, corr_method="", corr_th=0.2
-):
-
-    def impute(df):
+    df_train_real: pd.DataFrame,
+    df_train_fake: pd.DataFrame,
+    df_test: pd.DataFrame,
+    state_vars: List,
+    corr_method: str = "",
+    corr_th: float = 0.2,
+) -> Any:
+    def impute(df: pd.DataFrame) -> pd.DataFrame:
 
         # if CORR_METHOD=='ffill':
         df = df.copy()
@@ -1108,7 +1129,7 @@ def plot_corr(
 
         return df
 
-    def corr_agg(df):
+    def corr_agg(df: pd.DataFrame) -> np.ndarray:
 
         df = impute(df)
         temp = df.groupby("RecordID")[state_vars].corr()
@@ -1129,7 +1150,9 @@ def plot_corr(
 
         return corr
 
-    def compute_temp_corr(mat_true, mat_syn, th=0.2):
+    def compute_temp_corr(
+        mat_true: np.ndarray, mat_syn: np.ndarray, th: float = 0.2
+    ) -> float:
         norm_const = mat_true.shape[0] * (mat_true.shape[0] - 1) / 2
         mat_true = mat_true.copy()
         mat_syn = mat_syn.copy()
@@ -1248,17 +1271,19 @@ def plot_corr(
 
 
 def compute_temp_corr(
-    df_train_real, df_train_fake, df_test, state_vars, corr_method="", corr_th=0.2
-):
-
-    def impute(df):
+    df_train_real: pd.DataFrame,
+    df_train_fake: pd.DataFrame,
+    df_test: pd.DataFrame,
+    state_vars: List,
+    corr_method: str = "",
+    corr_th: float = 0.2,
+) -> dict:
+    def impute(df: pd.DataFrame) -> pd.DataFrame:
 
         # if CORR_METHOD=='ffill':
         df = df.copy()
         df[state_vars] = (
-            df[["RecordID"] + state_vars]
-            .groupby("RecordID")
-            .fillna(method="ffill", limit=6)
+            df[["id"] + state_vars].groupby("id").fillna(method="ffill", limit=6)
         )
 
         # # mean imputation
@@ -1267,11 +1292,11 @@ def compute_temp_corr(
 
         return df
 
-    def corr_agg(df):
+    def corr_agg(df: pd.DataFrame) -> np.ndarray:
 
         df = impute(df)
-        temp = df.groupby("RecordID")[state_vars].corr()
-        grouped = [group.droplevel(0).values for _, group in temp.groupby("RecordID")]
+        temp = df.groupby("id")[state_vars].corr()
+        grouped = [group.droplevel(0).values for _, group in temp.groupby("id")]
 
         corr = np.stack(grouped, axis=0)
         corr.shape
@@ -1288,7 +1313,9 @@ def compute_temp_corr(
 
         return corr
 
-    def compute_metric(mat_true, mat_syn, th=0.2):
+    def compute_metric(
+        mat_true: np.ndarray, mat_syn: np.ndarray, th: float = 0.2
+    ) -> float:
         norm_const = mat_true.shape[0] * (mat_true.shape[0] - 1) / 2
 
         mat_true2 = mat_true.copy()
@@ -1378,8 +1405,9 @@ def compute_temp_corr(
     return metric
 
 
-def plot_tsne(REAL, FAKE, N=10000):
+def plot_tsne(REAL: torch.Tensor, FAKE: torch.Tensor, N: int = 10000) -> go.Figure:
     # for t-SNE
+    # third party
     from MulticoreTSNE import MulticoreTSNE as TSNE
 
     X = np.concatenate([REAL[:N], FAKE[:N]], axis=0)  # [2*bs, hidden_dim]
@@ -1411,7 +1439,9 @@ def plot_tsne(REAL, FAKE, N=10000):
     return fig_tsne
 
 
-def xgboost_embeddings(df, state_vars, df_base=None):
+def xgboost_embeddings(
+    df: pd.DataFrame, state_vars: List, df_base: pd.DataFrame = None
+) -> Tuple[pd.DataFrame, pd.Series]:
 
     if df_base is not None:
         df_mean, df_std = df_base[state_vars].mean(), df_base[state_vars].std()
@@ -1422,10 +1452,10 @@ def xgboost_embeddings(df, state_vars, df_base=None):
     df_pro = prepro(df, df_mean, df_std, state_vars)
 
     features_names = df_pro.columns.tolist()
-    features_names.remove("RecordID")
-    features_names.remove("Label")
+    features_names.remove("id")
+    features_names.remove("outcome")
 
     X = df_pro[features_names]
-    y = df_pro["Label"]
+    y = df_pro["outcome"]
 
     return X, y

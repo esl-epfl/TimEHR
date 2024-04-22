@@ -1,12 +1,62 @@
-
-name: p12
-static_variables: 
-timeseries_variables:
-path_raw: /mlodata1/hokarami/tedam/raw
-path_processed: /mlodata1/hokarami/tedam/TimEHR/data/processed/p12-real
-path_train: /mlodata1/hokarami/tedam/TimEHR/data/processed/p12-real/split{SPLIT}/train.pkl
-path_eval: /mlodata1/hokarami/tedam/TimEHR/data/processed/p12-real/split{SPLIT}/eval.pkl
+d_conditional: 9
+d_ts: 35
+granularity: 1
 img_size: 64
-d_static: 9
-d_ts:
-label:
+label: null
+n_split: 5
+n_static: 5
+n_ts: 35
+name: p12
+path_processed: /mlodata1/hokarami/tedam/TimEHR/data/processed/p12-real
+path_raw: /mlodata1/hokarami/tedam/raw
+seed: 42
+static_types:
+- continuous
+- binary
+- continuous
+- categorical
+- continuous
+static_variables: null
+static_vars:
+- Age
+- Gender
+- Height
+- ICUType
+- Weight
+timeseries_variables: null
+ts_vars:
+- ALP
+- HCO3
+- SaO2
+- FiO2
+- K
+- Albumin
+- Urine
+- Glucose
+- SysABP
+- Mg
+- GCS
+- TroponinI
+- HR
+- RespRate
+- Na
+- ALT
+- Temp
+- Creatinine
+- NIDiasABP
+- NIMAP
+- Cholesterol
+- NISysABP
+- Bilirubin
+- PaO2
+- Lactate
+- BUN
+- PaCO2
+- Platelets
+- pH
+- DiasABP
+- WBC
+- TroponinT
+- MAP
+- HCT
+- AST

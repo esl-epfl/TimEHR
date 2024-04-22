@@ -1,36 +1,34 @@
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
-
+# stdlib
+import logging
 import os
+import typing
+from typing import Dict, Optional
+
+# third party
 import numpy as np
 import pandas as pd
-import yaml
-
-# from utils import mat2df, prepro,
-from .utils import gradient_penalty, ffill, save_examples
-
-import logging
+import torch
+import torch.nn as nn
 
 # from utils import
 import torch.optim as optim
-
-from .modules import Critic, Generator1, Disc_pix, Gen_pix, initialize_weights
-
-
-from synthcity.plugins.core.dataloader import GenericDataLoader
-from synthcity.plugins import Plugins
-
 import wandb
-
+import yaml
+from Utils.modules import Critic, Disc_pix, Gen_pix, Generator1, initialize_weights
 from omegaconf import OmegaConf
-
+from torch.utils.data import DataLoader
 from tqdm import tqdm
-from .utils import find_last_epoch
+
+# from utils import mat2df, prepro,
+from Utils.utils import ffill, find_last_epoch, gradient_penalty, save_examples
+
+# synthcity absolute
+from synthcity.plugins import Plugins
+from synthcity.plugins.core.dataloader import GenericDataLoader
 
 
 class CWGAN(nn.Module):
-    def __init__(self, opt):
+    def __init__(self, opt: OmegaConf) -> None:
         super(CWGAN, self).__init__()
         self.opt = opt
         self.device = opt.device
@@ -39,7 +37,7 @@ class CWGAN(nn.Module):
             self.opt.channels,
             self.opt.img_size,
             self.opt.feat_gen,
-            d_static=self.opt.d_static,
+            d_conditional=self.opt.d_conditional,
             conditional=self.opt.cond,
             kernel_size=self.opt.kernel_size,
         ).to(self.device)
@@ -48,7 +46,7 @@ class CWGAN(nn.Module):
             self.opt.channels,
             self.opt.img_size,
             self.opt.feat_cri,
-            d_static=self.opt.d_static,
+            d_conditional=self.opt.d_conditional,
             conditional=self.opt.cond,
             kernel_size=self.opt.kernel_size,
         ).to(self.device)
@@ -75,7 +73,7 @@ class CWGAN(nn.Module):
         self.run_path = "CWGAN initialized"
         self.epoch_no = 0
 
-    def from_pretrained(self, run_path):
+    def from_pretrained(self, run_path: str) -> None:
         logging.info(f"Loading CWGAN from run: {run_path}")
         print("CWGAN - run_path: ", run_path)
         api = wandb.Api()
@@ -88,7 +86,10 @@ class CWGAN(nn.Module):
                 )
 
         run.config
+        if "d_static" in run.config.keys():
+            run.config["d_conditional"] = run.config["d_static"]
 
+        # stdlib
         from datetime import datetime
 
         run_creation_time = datetime.strptime(run.created_at, "%Y-%m-%dT%H:%M:%S")
@@ -101,7 +102,7 @@ class CWGAN(nn.Module):
                 run.config["FEATURES_GEN"],
                 run.config["FEATURES_CRITIC"],
             )
-            IMG_SIZE, D_STATIC, COND, KERNEL_SIZE = (
+            IMG_SIZE, d_conditional, COND, KERNEL_SIZE = (
                 run.config["IMG_SIZE"],
                 run.config["D_STATIC"],
                 run.config["COND"],
@@ -114,16 +115,16 @@ class CWGAN(nn.Module):
                 run.config["feat_gen"],
                 run.config["feat_cri"],
             )
-            IMG_SIZE, D_STATIC, COND, KERNEL_SIZE = (
+            IMG_SIZE, d_conditional, COND, KERNEL_SIZE = (
                 run.config["img_size"],
-                self.opt.d_static,
+                self.opt.d_conditional,
                 run.config["cond"],
                 run.config["kernel_size"],
             )
             pass
 
         # COND = run.config['COND']
-        # D_STATIC = run.config['D_STATIC']
+        # d_conditional = run.config['d_conditional']
 
         last_epoch = find_last_epoch(f".local/{run_path}/model_weights")
         # last_epoch = 150
@@ -135,7 +136,7 @@ class CWGAN(nn.Module):
             N_CHANNELS,
             IMG_SIZE,
             FEATURES_GEN,
-            D_STATIC,
+            d_conditional,
             conditional=COND,
             kernel_size=KERNEL_SIZE,
         ).to("cuda")
@@ -148,7 +149,7 @@ class CWGAN(nn.Module):
             N_CHANNELS,
             IMG_SIZE,
             FEATURES_CRITIC,
-            D_STATIC,
+            d_conditional,
             conditional=COND,
             kernel_size=KERNEL_SIZE,
         ).to("cuda")
@@ -164,7 +165,7 @@ class CWGAN(nn.Module):
         self.run_path = run_path
         self.epoch_no = last_epoch
 
-    def eval_epoch(self, loader):
+    def eval_epoch(self, loader: DataLoader) -> tuple:
 
         self.gen.eval()
         self.critic.eval()
@@ -222,8 +223,8 @@ class CWGAN(nn.Module):
 
         wandb.log(
             {
-                f"Eval/loss_critic": tot_loss_critic / tot_n_samples,
-                f"Eval/loss_gen": tot_loss_gen / tot_n_samples,
+                "Eval/loss_critic": tot_loss_critic / tot_n_samples,
+                "Eval/loss_gen": tot_loss_gen / tot_n_samples,
             },
             step=self.epoch_no,
             commit=False,
@@ -234,7 +235,7 @@ class CWGAN(nn.Module):
 
         return sample_real, sample_fake
 
-    def train_epoch(self, train_loader):
+    def train_epoch(self, train_loader: DataLoader) -> None:
 
         self.gen.train()
         self.critic.train()
@@ -348,20 +349,31 @@ class CWGAN(nn.Module):
 
         pass
 
-    def train(self, train_dataset, val_dataset, wandb_task_name="DEBUG"):
-        N_VARS = len(train_dataset.dynamic_processor["mean"])
+    def train(
+        self,
+        train_dataset: DataLoader,
+        val_dataset: DataLoader,
+        wandb_task_name: str = "DEBUG",
+        collate_fn: Optional[typing.Callable] = None,
+    ) -> None:
+        # N_VARS = len(train_dataset.dynamic_processor['mean'])
+        N_VARS = len(train_dataset.temporal_features)
 
         # creating dataloaders
         train_loader = DataLoader(
             train_dataset,
             batch_size=self.opt.bs,
+            collate_fn=train_dataset.collate_fn,
             shuffle=True,
+            # num_workers=8
         )
 
         val_loader = DataLoader(
             val_dataset,
             batch_size=self.opt.bs,
+            collate_fn=val_dataset.collate_fn,
             shuffle=False,
+            # num_workers=8
         )
 
         print("### Start Training CWGAN-GP ...")
@@ -434,7 +446,7 @@ class CWGAN(nn.Module):
 
 
 class Pix2Pix(nn.Module):
-    def __init__(self, opt):
+    def __init__(self, opt: OmegaConf) -> None:
         super(Pix2Pix, self).__init__()
         self.opt = opt
         self.device = opt.device
@@ -443,7 +455,7 @@ class Pix2Pix(nn.Module):
             opt.channels * 0 + 1,
             opt.img_size,
             features=opt.feat_gen,
-            d_static=self.opt.d_static,
+            d_conditional=self.opt.d_conditional,
             conditional=opt.cond,
             kernel_size=opt.kernel_size,
         ).to(self.device)
@@ -452,7 +464,7 @@ class Pix2Pix(nn.Module):
             opt.channels * 0 + 2,
             opt.img_size,
             features=list(opt.feat_disc),
-            d_static=self.opt.d_static,
+            d_conditional=self.opt.d_conditional,
             conditional=opt.cond,
             kernel_size=opt.kernel_size,
         ).to(self.device)
@@ -484,7 +496,7 @@ class Pix2Pix(nn.Module):
         self.run_path = "Pix2Pix initialized"
         self.epoch_no = 0
 
-    def from_pretrained(self, run_path):
+    def from_pretrained(self, run_path: str) -> None:
         logging.info(f"Loading PIXGAN from run: {run_path}")
         print("PIXGAN - run_path: ", run_path)
         api = wandb.Api()
@@ -496,9 +508,13 @@ class Pix2Pix(nn.Module):
                     replace=False, exist_ok=True, root=f".local/{run_path}"
                 )
 
+        if "d_static" in run.config.keys():
+            run.config["d_conditional"] = run.config["d_static"]
+
         last_epoch = find_last_epoch(f".local/{run_path}/model_weights")
         print("last_epoch: ", last_epoch)
 
+        # stdlib
         from datetime import datetime
 
         run_creation_time = datetime.strptime(run.created_at, "%Y-%m-%dT%H:%M:%S")
@@ -510,9 +526,9 @@ class Pix2Pix(nn.Module):
                 run.config["FEAT_GEN"],
                 [8, 16],
             )
-            IMG_SIZE, D_STATIC, COND, KERNEL_SIZE = (
+            IMG_SIZE, d_conditional, COND, KERNEL_SIZE = (
                 run.config["IMG_SIZE"],
-                run.config["D_STATIC"],
+                run.config["d_conditional"],
                 run.config["COND"],
                 run.config["KERNEL_SIZE"],
             )
@@ -522,9 +538,9 @@ class Pix2Pix(nn.Module):
                 run.config["feat_gen"],
                 run.config["feat_disc"],
             )
-            IMG_SIZE, D_STATIC, COND, KERNEL_SIZE = (
+            IMG_SIZE, d_conditional, COND, KERNEL_SIZE = (
                 run.config["img_size"],
-                self.opt.d_static,
+                self.opt.d_conditional,
                 run.config["cond"],
                 run.config["kernel_size"],
             )
@@ -536,7 +552,7 @@ class Pix2Pix(nn.Module):
             N_CHANNELS * 0 + 1,
             IMG_SIZE,
             features=FEAT_GEN,
-            d_static=D_STATIC,
+            d_conditional=d_conditional,
             conditional=COND,
             kernel_size=KERNEL_SIZE,
         ).to(self.device)
@@ -547,7 +563,7 @@ class Pix2Pix(nn.Module):
             N_CHANNELS * 0 + 2,
             IMG_SIZE,
             features=FEAT_DISC,
-            d_static=D_STATIC,
+            d_conditional=d_conditional,
             conditional=COND,
             kernel_size=KERNEL_SIZE,
         ).to(self.device)
@@ -559,7 +575,7 @@ class Pix2Pix(nn.Module):
         self.run_path = run_path
         self.epoch_no = last_epoch
 
-    def eval_epoch(self, loader):
+    def eval_epoch(self, loader: DataLoader) -> tuple:
 
         self.disc.eval()
         self.gen.eval()
@@ -574,7 +590,6 @@ class Pix2Pix(nn.Module):
         tot_G_fake_loss = 0
         tot_D_loss = 0
         tot_samples = 0
-        tot_pred_loss = 0
         tot_corr_loss = 0
 
         for idx, batch in enumerate(loop):
@@ -657,7 +672,7 @@ class Pix2Pix(nn.Module):
 
         return sample_real, sample_fake
 
-    def train_epoch(self, loader):
+    def train_epoch(self, loader: DataLoader) -> None:
 
         self.disc.train()
         self.gen.train()
@@ -665,7 +680,6 @@ class Pix2Pix(nn.Module):
         # loop =
 
         tot_L1_filled = 0
-        tot_L1_weighted = 0
 
         tot_G_fake_loss = 0
         tot_D_loss = 0
@@ -725,7 +739,7 @@ class Pix2Pix(nn.Module):
                 L1_filled = nn.L1Loss()(y_fake_filled, y_filled)  # * self.opt.
                 L1 = nn.L1Loss()(y_fake, y)
                 L2 = nn.MSELoss()(y_fake, y)
-                L2_filled = nn.MSELoss()(y_fake_filled, y_filled)
+                # L2_filled = nn.MSELoss()(y_fake_filled, y_filled)
 
                 # calculate L1 when 50% of x>0 is maskes
 
@@ -791,18 +805,27 @@ class Pix2Pix(nn.Module):
             commit=False,
         )
 
-    def train(self, train_dataset, val_dataset, wandb_task_name="DEBUG"):
-        N_VARS = len(train_dataset.dynamic_processor["mean"])
+    def train(
+        self,
+        train_dataset: DataLoader,
+        val_dataset: DataLoader,
+        wandb_task_name: str = "DEBUG",
+        collate_fn: Optional[typing.Callable] = None,
+    ) -> None:
+        # N_VARS = len(train_dataset.dynamic_processor['mean'])
+        N_VARS = len(train_dataset.temporal_features)
         # creating dataloaders
         train_loader = DataLoader(
             train_dataset,
             batch_size=self.opt.bs,
+            collate_fn=train_dataset.collate_fn,
             shuffle=True,
         )
 
         val_loader = DataLoader(
             val_dataset,
             batch_size=self.opt.bs,
+            collate_fn=val_dataset.collate_fn,
             shuffle=False,
         )
         print("### Start Training Pix2Pix ...")
@@ -882,30 +905,52 @@ class Pix2Pix(nn.Module):
 
 
 class TimEHR(nn.Module):
-    def __init__(self, opt):
+    def __init__(self, opt: OmegaConf) -> None:
         super(TimEHR, self).__init__()
         self.opt = opt
         self.device = opt.device
 
-        self.progress = dict()  # to store progress of training
+        self.progress: Dict = dict()  # to store progress of training
 
         self.cwgan = CWGAN(opt.cwgan)
         self.pix2pix = Pix2Pix(opt.pix2pix)
 
-    def from_pretrained(self, path_cwgan=None, path_pix2pix=None):
-        if path_cwgan is not None:
+    def from_pretrained(self, path_cwgan: str = "", path_pix2pix: str = "") -> None:
+        if path_cwgan != "":
             self.cwgan.from_pretrained(path_cwgan)
-        if path_pix2pix is not None:
+        if path_pix2pix != "":
             self.pix2pix.from_pretrained(path_pix2pix)
 
         pass
 
-    def train(self, train_dataset, val_dataset, wandb_task_name="DEBUG"):
+    def train(
+        self,
+        train_dataset: DataLoader,
+        val_dataset: DataLoader,
+        wandb_task_name: str = "DEBUG",
+        collate_fn: Optional[typing.Callable] = None,
+    ) -> None:
 
-        self.cwgan.train(train_dataset, val_dataset, wandb_task_name=wandb_task_name)
-        self.pix2pix.train(train_dataset, val_dataset, wandb_task_name=wandb_task_name)
+        self.cwgan.train(
+            train_dataset,
+            val_dataset,
+            wandb_task_name=wandb_task_name,
+            collate_fn=collate_fn,
+        )
+        self.pix2pix.train(
+            train_dataset,
+            val_dataset,
+            wandb_task_name=wandb_task_name,
+            collate_fn=collate_fn,
+        )
 
-    def generate(self, train_dataset, train_schema, count=1000, method="ctgan"):
+    def generate(
+        self,
+        train_dataset: DataLoader,
+        collate_fn: Optional[typing.Callable] = None,
+        count: int = 1000,
+        method: str = "ctgan",
+    ) -> tuple:
 
         # if self.opt.generation.ctgan:
         if method == "ctgan":
@@ -914,31 +959,33 @@ class TimEHR(nn.Module):
             # import sys
             # sys.path.insert(0, "/mlodata1/hokarami/synthcity/src")
 
-            real_static, real_data = self._get_data(train_dataset)
+            real_static, real_data = self._get_data(
+                train_dataset, collate_fn=collate_fn
+            )
             X = pd.DataFrame(
-                real_static, columns=train_schema.static_processor["demo_vars_enc"]
+                real_static, columns=train_dataset.static_features + ["outcome"]
             )
             loader = GenericDataLoader(
                 X,
-                target_column="Label",
+                target_column="outcome",
                 # sensitive_columns=["sex"],
             )
 
             syn_model = Plugins().get("ctgan", n_iter=100)
 
-            syn_model.fit(loader, cond=X["Label"])
+            syn_model.fit(loader, cond=X["outcome"])
 
             # generate
             # count = int(real_static.shape[0]*self.opt.generation.ratio)
 
-            real_prevalence = X["Label"].mean()
+            real_prevalence = X["outcome"].mean()
             # generate a random binary vector with exact same prevalence as real data
             conditional = np.random.binomial(1, real_prevalence, size=(count,))
 
-            generated_static = (
+            generated_conditional = (
                 syn_model.generate(
                     count=count,
-                    cond=conditional,  #  X['Label'].values # real_prevalence # gen_labels
+                    cond=conditional,
                 )
                 .dataframe()
                 .values
@@ -948,22 +995,24 @@ class TimEHR(nn.Module):
             logging.info(
                 f"Using static data from the training set ({len(train_dataset)} samples)"
             )
-            real_static, real_data = self._get_data(train_dataset)
-            generated_static = real_static
+            real_static, real_data = self._get_data(
+                train_dataset, collate_fn=collate_fn
+            )
+            generated_conditional = real_static
 
         IMG_SIZE = self.opt.cwgan.img_size
         Z_DIM = self.opt.cwgan.z_dim
-        METHOD = self.opt.generation.method
+        # METHOD = self.opt.generation.method
         all_fake = []
         all_fake_sta = []
-        while generated_static.shape[0] > 0:
-            cur_batch_size = min(generated_static.shape[0], IMG_SIZE)
+        while generated_conditional.shape[0] > 0:
+            cur_batch_size = min(generated_conditional.shape[0], IMG_SIZE)
             sta_fake = (
-                torch.from_numpy(generated_static[:cur_batch_size])
+                torch.from_numpy(generated_conditional[:cur_batch_size])
                 .to(self.device)
                 .float()
             )
-            generated_static = generated_static[cur_batch_size:]
+            generated_conditional = generated_conditional[cur_batch_size:]
 
             # sta_fake = sta
             all_fake_sta.append(sta_fake.cpu().detach().numpy())
@@ -1009,11 +1058,14 @@ class TimEHR(nn.Module):
 
         pass
 
-    def _get_data(self, dataset):
+    def _get_data(
+        self, dataset: DataLoader, collate_fn: Optional[typing.Callable] = None
+    ) -> tuple:
 
         loader = DataLoader(
             dataset,
             batch_size=self.opt.bs,
+            collate_fn=dataset.collate_fn,
             shuffle=False,
         )
 
@@ -1037,7 +1089,7 @@ class TimEHR(nn.Module):
         all_real = np.concatenate(all_real, axis=0)
         return all_sta, all_real
 
-    def save_to_yaml(self, folder="Results"):
+    def save_to_yaml(self, folder: str = "Results") -> None:
 
         if not os.path.exists(folder):
             os.makedirs(folder)

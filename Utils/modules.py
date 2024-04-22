@@ -2,6 +2,10 @@
 
 """
 
+# stdlib
+from typing import List
+
+# third party
 import torch
 import torch.nn as nn
 
@@ -9,19 +13,19 @@ import torch.nn as nn
 class Critic(nn.Module):
     def __init__(
         self,
-        channels_img,
-        image_size,
-        features_d,
-        d_static=9,
-        conditional=None,
-        kernel_size=4,
-    ):
+        channels_img: int,
+        image_size: int,
+        features_d: int,
+        d_conditional: int = 9,
+        conditional: bool = False,
+        kernel_size: int = 4,
+    ) -> None:
         super(Critic, self).__init__()
 
         self.channels_img = channels_img
         self.image_size = image_size
         self.features_d = features_d
-        self.d_static = d_static
+        self.d_conditional = d_conditional
         self.conditional = conditional
         self.kernel_size = kernel_size
 
@@ -30,7 +34,7 @@ class Critic(nn.Module):
 
         if conditional:
             self.embed = nn.Linear(
-                d_static, self.image_size * self.image_size, bias=False
+                d_conditional, self.image_size * self.image_size, bias=False
             )
             self.d_ch_cond = 1
             pass
@@ -70,7 +74,14 @@ class Critic(nn.Module):
             nn.Conv2d(features_d * 8, 1, kernel_size=4, stride=2, padding=0),
         )
 
-    def _block(self, in_channels, out_channels, kernel_size, stride, padding):
+    def _block(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int,
+        padding: int,
+    ) -> nn.Sequential:
         return nn.Sequential(
             nn.Conv2d(
                 in_channels,
@@ -84,7 +95,7 @@ class Critic(nn.Module):
             nn.LeakyReLU(0.2),
         )
 
-    def forward(self, x, y=None):
+    def forward(self, x: torch.Tensor, y: torch.Tensor = None) -> torch.Tensor:
         if y is not None:
             y = self.embed(y).view(-1, 1, self.image_size, self.image_size)
             x = torch.cat([x, y], dim=1)
@@ -94,21 +105,21 @@ class Critic(nn.Module):
 class Generator1(nn.Module):
     def __init__(
         self,
-        channels_noise,
-        channels_img,
-        image_size,
-        features_g,
-        d_static=9,
-        conditional=None,
-        kernel_size=4,
-    ):
+        channels_noise: int,
+        channels_img: int,
+        image_size: int,
+        features_g: int,
+        d_conditional: int = 9,
+        conditional: bool = False,
+        kernel_size: int = 4,
+    ) -> None:
         super(Generator1, self).__init__()
 
         self.channels_noise = channels_noise
         self.channels_img = channels_img
         self.image_size = image_size
         self.features_g = features_g
-        self.d_static = d_static
+        self.d_conditional = d_conditional
         self.conditional = conditional
         self.kernel_size = kernel_size
 
@@ -116,7 +127,7 @@ class Generator1(nn.Module):
         self.padding = (self.kernel_size - 2) // 2
 
         if conditional:
-            self.embed = nn.Linear(d_static, 50, bias=False)
+            self.embed = nn.Linear(d_conditional, 50, bias=False)
             self.d_ch_cond = 50
             pass
         else:
@@ -202,7 +213,14 @@ class Generator1(nn.Module):
                 # nn.Sigmoid(),
             )
 
-    def _block(self, in_channels, out_channels, kernel_size, stride, padding):
+    def _block(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int,
+        padding: int,
+    ) -> nn.Sequential:
         return nn.Sequential(
             nn.ConvTranspose2d(
                 in_channels,
@@ -216,7 +234,7 @@ class Generator1(nn.Module):
             nn.ReLU(),
         )
 
-    def forward(self, x, y=None):
+    def forward(self, x: torch.Tensor, y: torch.Tensor = None) -> torch.Tensor:
         # x shape is N x channels_noise x 1 x 1
         if y is not None:
             y = self.embed(y).unsqueeze(-1).unsqueeze(-1)  # N x 50 x 1 x 1
@@ -229,7 +247,7 @@ class Generator1(nn.Module):
         return x
 
 
-def initialize_weights(model):
+def initialize_weights(model: nn.Module) -> None:
     # Initializes weights according to the DCGAN paper
     for m in model.modules():
         if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d, nn.BatchNorm2d)):
@@ -238,8 +256,13 @@ def initialize_weights(model):
 
 class Block(nn.Module):  # this is the for generator pix
     def __init__(
-        self, in_channels, out_channels, down=True, act="relu", use_dropout=False
-    ):
+        self,
+        in_channels: int,
+        out_channels: int,
+        down: bool = True,
+        act: str = "relu",
+        use_dropout: bool = False,
+    ) -> None:
         super(Block, self).__init__()
         self.conv = nn.Sequential(
             (
@@ -266,7 +289,7 @@ class Block(nn.Module):  # this is the for generator pix
         self.dropout = nn.Dropout(0.5)
         self.down = down
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.conv(x)
         return self.dropout(x) if self.use_dropout else x
 
@@ -274,19 +297,19 @@ class Block(nn.Module):  # this is the for generator pix
 class Gen_pix(nn.Module):
     def __init__(
         self,
-        in_channels,
-        image_size,
-        features=64,
-        d_static=9,
-        conditional=False,
-        kernel_size=4,
-    ):
+        in_channels: int,
+        image_size: int,
+        features: int = 64,
+        d_conditional: int = 9,
+        conditional: bool = False,
+        kernel_size: int = 4,
+    ) -> None:
         super().__init__()
 
         self.channels_img = in_channels
         self.image_size = image_size
         self.features = features
-        self.d_static = d_static
+        self.d_conditional = d_conditional
         self.conditional = conditional
         self.kernel_size = kernel_size
 
@@ -295,7 +318,7 @@ class Gen_pix(nn.Module):
 
         if conditional:
             self.embed = nn.Linear(
-                d_static, self.image_size * self.image_size, bias=False
+                d_conditional, self.image_size * self.image_size, bias=False
             )
             self.d_ch_cond = 1
             pass
@@ -366,7 +389,7 @@ class Gen_pix(nn.Module):
         if image_size == 16:
             self.downsampling.add_module("down1", self.down1)
 
-    def forward(self, x, sta=None):
+    def forward(self, x: torch.Tensor, sta: torch.Tensor = None) -> torch.Tensor:
         # x = torch.cat([x, y_partial], dim=1)
         if sta is not None:
             # shape = (batch_size, 1, 256, 256)
@@ -402,7 +425,7 @@ class Gen_pix(nn.Module):
 
 
 class CNNBlock(nn.Module):  # this is the discriminator pix
-    def __init__(self, in_channels, out_channels, stride):
+    def __init__(self, in_channels: int, out_channels: int, stride: int) -> None:
         super(CNNBlock, self).__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(
@@ -421,26 +444,26 @@ class CNNBlock(nn.Module):  # this is the discriminator pix
             # nn.ReLU(),
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.conv(x)
 
 
 class Disc_pix(nn.Module):
     def __init__(
         self,
-        in_channels,
-        image_size,
-        features=[64, 128, 256, 512],
-        d_static=9,
-        conditional=False,
-        kernel_size=4,
-    ):
+        in_channels: int,
+        image_size: int,
+        features: List = [64, 128, 256, 512],
+        d_conditional: int = 9,
+        conditional: bool = False,
+        kernel_size: int = 4,
+    ) -> None:
         super().__init__()
 
         self.channels_img = in_channels
         self.image_size = image_size
         self.features = features
-        self.d_static = d_static
+        self.d_conditional = d_conditional
         self.conditional = conditional
         self.kernel_size = kernel_size
 
@@ -449,16 +472,16 @@ class Disc_pix(nn.Module):
 
         if conditional:
             self.embed = nn.Linear(
-                d_static, self.image_size * self.image_size, bias=False
+                d_conditional, self.image_size * self.image_size, bias=False
             )
-            # self.embed2 = nn.Linear(d_static, 1, bias=False)
+            # self.embed2 = nn.Linear(d_conditional, 1, bias=False)
             self.d_ch_cond = 1
             pass
         else:
             self.d_ch_cond = 0
             pass
 
-        d_additional = 1 if conditional else 0
+        # d_additional = 1 if conditional else 0
         self.initial = nn.Sequential(
             nn.Conv2d(
                 in_channels + self.d_ch_cond,
@@ -494,7 +517,9 @@ class Disc_pix(nn.Module):
 
         self.model = nn.Sequential(*layers)
 
-    def forward(self, x, y, sta=None):
+    def forward(
+        self, x: torch.Tensor, y: torch.Tensor, sta: torch.Tensor = None
+    ) -> torch.Tensor:
         # x.shape = (batch_size, channels, height, width)
         # y.shape = (batch_size, channels, height, width)
         # shape = (batch_size, channels*2, height, width)
@@ -514,10 +539,10 @@ class Disc_pix(nn.Module):
         return x
 
 
-def test_pix():
+def test_pix() -> None:
     img_size = 128
     N, in_channels, H, W = 8, 2, img_size, img_size
-    noise_dim = 100
+    # noise_dim = 100
     x = torch.randn((N, in_channels, H, W))
     print("x.shape", x.shape)
 
@@ -531,11 +556,11 @@ def test_pix():
     # assert gen(z).shape == (N, in_channels, H, W), "Generator test failed"
 
 
-def test_cwgan():
+def test_cwgan() -> None:
 
     img_size = 128
     N, in_channels, H, W = 8, 2, img_size, img_size
-    noise_dim = 100
+    # noise_dim = 100
     x = torch.randn((N, in_channels, H, W))
 
     gen = Generator1(100, in_channels, H, 8, conditional=False)

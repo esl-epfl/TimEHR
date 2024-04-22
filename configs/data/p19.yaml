@@ -1,14 +1,52 @@
-
-name: p19
-static_variables: 
-timeseries_variables:
-path_raw: /mlodata1/hokarami/tedam/raw
-path_processed: /mlodata1/hokarami/tedam/TimEHR/data/processed/p19-real
-# path_train: /mlodata1/hokarami/tedam/GAN/p19-real/split{SPLIT}/p19gan_train.pkl
-# path_eval: /mlodata1/hokarami/tedam/GAN/p19-real/split{SPLIT}/p19gan_eval.pkl
-path_train: /mlodata1/hokarami/tedam/TimEHR/data/processed/p19-real/split{SPLIT}/train.pkl
-path_eval: /mlodata1/hokarami/tedam/TimEHR/data/processed/p19-real/split{SPLIT}/eval.pkl
+d_conditional: 4
+d_ts: 32
+granularity: 1
 img_size: 64
-d_static: 4
-d_ts:
-label:
+n_split: 5
+n_static: 3
+n_ts: 32
+name: p19
+path_processed: /mlodata1/hokarami/tedam/TimEHR/data/processed/p19-real
+path_raw: /mlodata1/hokarami/tedam/raw
+seed: 42
+static_types:
+- continuous
+- binary
+- continuous
+static_vars:
+- Age
+- Gender
+- HospAdmTime
+ts_vars:
+- Calcium
+- WBC
+- Lactate
+- PaCO2
+- Creatinine
+- Glucose
+- PTT
+- TroponinI
+- Magnesium
+- HR
+- MAP
+- FiO2
+- DBP
+- Hct
+- Potassium
+- Bilirubin_direct
+- O2Sat
+- Temp
+- Hgb
+- SBP
+- AST
+- Chloride
+- Bilirubin_total
+- pH
+- Fibrinogen
+- Alkalinephos
+- BUN
+- HCO3
+- Platelets
+- Phosphate
+- SaO2
+- Resp

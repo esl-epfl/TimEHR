@@ -1,7 +1,0 @@
-d_static: 2
-img_size: 64
-name: sim-l0.5-d16
-path_eval: ./data/processed/sim-l0.5-d16/split{SPLIT}/eval.pkl
-path_processed: ./data/processed/sim-l0.5-d16
-path_raw: ./data/raw
-path_train: ./data/processed/sim-l0.5-d16/split{SPLIT}/train.pkl
