@@ -19,7 +19,7 @@ hydra:
 
 cwgan:
 
-  epochs: 60
+  epochs: 150
   cri_iter: 1
   lr: 0.0003
   bs: 128
@@ -46,7 +46,7 @@ cwgan:
 
 pix2pix:
 
-  epochs: 60
+  epochs: 150
   disc_iter: 1
   lr: 0.002
   bs: 32

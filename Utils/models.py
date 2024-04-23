@@ -991,7 +991,7 @@ class TimEHR(nn.Module):
                 .values
             )  # generate only patients with the outcome = 1
             print(f"{count} samples generated using CTGAN")
-        else:
+        elif method == "real":
             logging.info(
                 f"Using static data from the training set ({len(train_dataset)} samples)"
             )
@@ -999,6 +999,8 @@ class TimEHR(nn.Module):
                 train_dataset, collate_fn=collate_fn
             )
             generated_conditional = real_static
+        else:
+            raise ValueError(f"Unknown method for generation: {method}")
 
         IMG_SIZE = self.opt.cwgan.img_size
         Z_DIM = self.opt.cwgan.z_dim
