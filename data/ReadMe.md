@@ -2,10 +2,10 @@
 
 
 ## P12
-- download the dataset from [PhysioNet/Computing in Cardiology Challenge 2012](https://physionet.org/content/challenge-2012/1.0.0/). The dataset contains three folder for three hospitals. You can also download the csv file containing all 12k patients from [here](https://drive.google.com/drive/folders/112_jRjKB8_oFlyF8J0eS9xqhDxBLfaPh?usp=drive_link)(`p12.csv`).
+- download the dataset from [PhysioNet/Computing in Cardiology Challenge 2012](https://physionet.org/content/challenge-2012/1.0.0/). The dataset contains three folder for three hospitals. You can also download the csv file containing all 12k patients from [here](https://drive.google.com/drive/folders/112_jRjKB8_oFlyF8J0eS9xqhDxBLfaPh?usp=sharing)(`p12.csv`).
 
 ## P19
-- download the dataset from [PhysioNet/Computing in Cardiology Challenge 2019](https://physionet.org/content/challenge-2019/1.0.0/). The dataset contains two folders for two hospitals. You can also download the csv file containing all ~43k patients from [here](https://drive.google.com/drive/folders/112_jRjKB8_oFlyF8J0eS9xqhDxBLfaPh?usp=drive_link)(`df_A.csv` and `df_B.csv`).
+- download the dataset from [PhysioNet/Computing in Cardiology Challenge 2019](https://physionet.org/content/challenge-2019/1.0.0/). The dataset contains two folders for two hospitals. You can also download the csv file containing all ~43k patients from [here](https://drive.google.com/drive/folders/112_jRjKB8_oFlyF8J0eS9xqhDxBLfaPh?usp=sharing)(`df_A.csv` and `df_B.csv`).
 
 ## MIMIC-III
 - You need to request access to the dataset from [PhysioNet](https://physionet.org/content/mimiciii/1.4/). Once you downloaded the csv files, you can use this repo to extract ~50k patients into a `.csv` fuke.
@@ -22,6 +22,6 @@ Put the csv files in the `data/raw` folder or another folder. Then, add the `pat
 
 
 # Preparing Datasets
-* Now, check [Prepare_Datasets.ipynb](Prepare_Datasets.ipynb) to see how to prepare the raw datasets.
+* Now, check [Prepare_Datasets.ipynb](Prepare_Datasets.ipynb) to see how to prepare the raw datasets. The prepared datasets for `P12` and `P19` can be downloaded from [here](https://drive.google.com/drive/folders/1QsK1tcH5NV5Xu2cEMOJvCy3IicSvRSme?usp=sharing).
 
 

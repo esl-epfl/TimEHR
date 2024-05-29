@@ -74,7 +74,7 @@ class CWGAN(nn.Module):
         self.epoch_no = 0
 
     def from_pretrained(self, run_path: str) -> None:
-        logging.info(f"Loading CWGAN from run: {run_path}")
+        print(f"Loading CWGAN from run: {run_path}")
         print("CWGAN - run_path: ", run_path)
         api = wandb.Api()
         run = api.run(run_path)
@@ -497,7 +497,7 @@ class Pix2Pix(nn.Module):
         self.epoch_no = 0
 
     def from_pretrained(self, run_path: str) -> None:
-        logging.info(f"Loading PIXGAN from run: {run_path}")
+        print(f"Loading PIXGAN from run: {run_path}")
         print("PIXGAN - run_path: ", run_path)
         api = wandb.Api()
         run = api.run(run_path)
@@ -954,7 +954,7 @@ class TimEHR(nn.Module):
 
         # if self.opt.generation.ctgan:
         if method == "ctgan":
-            logging.info("Generating static data using TabularGAN")
+            print("Generating static data using TabularGAN")
 
             # import sys
             # sys.path.insert(0, "/mlodata1/hokarami/synthcity/src")
@@ -992,7 +992,7 @@ class TimEHR(nn.Module):
             )  # generate only patients with the outcome = 1
             print(f"{count} samples generated using CTGAN")
         elif method == "real":
-            logging.info(
+            print(
                 f"Using static data from the training set ({len(train_dataset)} samples)"
             )
             real_static, real_data = self._get_data(
