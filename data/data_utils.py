@@ -338,8 +338,8 @@ def get_datasets(config_data, split=0, preprocess=True):
         open(config_data.path_processed + f"/split{split}/train_ids.pkl", "rb")
     )
 
-    # df_static.rename(columns={"RecordID": "id", "Label": "outcome"}, inplace=True)
-    # df_temporal.rename(columns={"RecordID": "id", "Time": "timepoint"}, inplace=True)
+    df_static.rename(columns={"RecordID": "id", "Label": "outcome"}, inplace=True)
+    df_temporal.rename(columns={"RecordID": "id", "Time": "timepoint"}, inplace=True)
 
     df_static_train = df_static[df_static.id.isin(train_ids)]  # .copy()
     df_temporal_train = df_temporal[df_temporal.id.isin(train_ids)]  # .copy()
