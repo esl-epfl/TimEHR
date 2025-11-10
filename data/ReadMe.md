@@ -8,9 +8,8 @@
 - download the dataset from [PhysioNet/Computing in Cardiology Challenge 2019](https://physionet.org/content/challenge-2019/1.0.0/). The dataset contains two folders for two hospitals. You can also download the csv file containing all ~43k patients from [here](https://drive.google.com/drive/folders/112_jRjKB8_oFlyF8J0eS9xqhDxBLfaPh?usp=sharing)(`df_A.csv` and `df_B.csv`).
 
 ## MIMIC-III
-- You need to request access to the dataset from [PhysioNet](https://physionet.org/content/mimiciii/1.4/). Once you downloaded the csv files, you can use this repo to extract ~50k patients into a `.csv` file (UPDATE: please send an email with your CITI trainig certificate to get the data).
+- You need to request access to the dataset from [PhysioNet](https://physionet.org/content/mimiciii/1.4/). You can download the preprocessed dataset from [here](https://drive.google.com/file/d/18k5n7jk3mG70loGCyrhrp1DM9s3xhds1/view?usp=sharing).
 
-Put the csv files in the `data/raw` folder or another folder. Then, add the `path_raw` to the `configs/data/{DATASET_NAME}.yaml` file.
 
 ## Simulated data
 - Please run: 

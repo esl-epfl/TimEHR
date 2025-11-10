@@ -26,9 +26,26 @@ def train(cfg: DictConfig):
     )
 
     # loading data
-    train_dataset, val_dataset = get_datasets(
-        cfg.data, split=cfg.split, preprocess=True
-    )
+
+    # check if pickle dataset exists
+    if os.path.exists(f"{cfg.data.path_processed}/split{cfg.split}/trainDataset.pkl"):
+        
+        # important: to avoid import errors when loading pickled datasets
+        import sys
+        import data.data_utils as data_utils
+        sys.modules['data_utils'] = data_utils
+        
+        with open(f"{cfg.data.path_processed}/split{cfg.split}/trainDataset.pkl", "rb") as f:
+            train_dataset = pickle.load(f)
+        with open(f"{cfg.data.path_processed}/split{cfg.split}/valDataset.pkl", "rb") as f:
+            val_dataset = pickle.load(f)
+
+        print("Loaded datasets from pickle files.")
+    else:
+        train_dataset, val_dataset = get_datasets(
+            cfg.data, split=cfg.split, preprocess=True
+        )
+        
 
     # training model
     model = TimEHR(cfg)

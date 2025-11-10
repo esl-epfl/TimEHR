@@ -21,16 +21,9 @@ Clone the repository, create a virtual environment (`venv` or `conda`), and inst
 git clone https://github.com/hojjatkarami/TimEHR.git
 cd TimEHR
 
-# using virtualenv
-python3 -m venv test2
-source test2/bin/activate
+conda env create -f env.yml
+conda activate timehr
 
-# using conda
-conda create --name TimEHR python=3.9.7 --yes
-conda activate TimEHR
-
-# install the required packages
-pip install -r requirements.txt
 ```
 
 
